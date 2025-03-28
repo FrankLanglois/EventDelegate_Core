@@ -1,0 +1,27 @@
+# Set the target folder path and CSV output path
+$folderPath = "C:\Path\To\Your\Folder"
+$timestamp = Get-Date -Format "yyyy-MM-dd"
+$outputCsv = "C:\Path\To\Your\Output_$timestamp.csv"
+
+# Get all files in the folder and subfolders
+$files = Get-ChildItem -Path $folderPath -Recurse -File
+
+# Count files by patterns
+$dmcCount = ($files | Where-Object { $_.Name -like "dmc-*" }).Count
+$pmcCount = ($files | Where-Object { $_.Name -like "pmc-*" }).Count
+$pngCount = ($files | Where-Object { $_.Extension -eq ".png" }).Count
+$jpgCount = ($files | Where-Object { $_.Extension -eq ".jpg" }).Count
+
+# Prepare results for CSV
+$results = @(
+    [PSCustomObject]@{ Timestamp = $timestamp; Category = "Files starting with 'dmc-'"; Count = $dmcCount }
+    [PSCustomObject]@{ Timestamp = $timestamp; Category = "Files starting with 'pmc-'"; Count = $pmcCount }
+    [PSCustomObject]@{ Timestamp = $timestamp; Category = ".png files"; Count = $pngCount }
+    [PSCustomObject]@{ Timestamp = $timestamp; Category = ".jpg files"; Count = $jpgCount }
+)
+
+# Export results to CSV
+$results | Export-Csv -Path $outputCsv -NoTypeInformation
+
+# Display the results
+Write-Host "`nResults saved to: $outputCsv"
