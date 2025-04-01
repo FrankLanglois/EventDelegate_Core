@@ -1,0 +1,63 @@
+# Define paths to old and new directories
+$oldPath = "C:\OldFiles"   # Path to the old file set
+$newPath = "C:\NewFiles"   # Path to the new file set
+$outputCsv = "C:\ComparisonResults.csv"
+
+# Get all files from both directories (including subdirectories)
+$oldFiles = Get-ChildItem -Path $oldPath -File -Recurse | Select-Object FullName, Name, LastWriteTime, Length
+$newFiles = Get-ChildItem -Path $newPath -File -Recurse | Select-Object FullName, Name, LastWriteTime, Length
+
+# Create hash tables for faster lookup
+$oldFileMap = @{}
+$oldFiles | ForEach-Object { $oldFileMap[$_.Name] = $_ }
+
+$newFileMap = @{}
+$newFiles | ForEach-Object { $newFileMap[$_.Name] = $_ }
+
+# List to store results
+$results = @()
+
+# Check for removed & modified files
+foreach ($file in $oldFiles) {
+    if ($newFileMap.ContainsKey($file.Name)) {
+        $newFile = $newFileMap[$file.Name]
+        if (($file.Length -ne $newFile.Length) -or ($file.LastWriteTime -ne $newFile.LastWriteTime)) {
+            $results += [PSCustomObject]@{
+                FileName = $file.Name
+                Status   = "Modified"
+                OldSize  = $file.Length
+                NewSize  = $newFile.Length
+                OldDate  = $file.LastWriteTime
+                NewDate  = $newFile.LastWriteTime
+            }
+        }
+    } else {
+        $results += [PSCustomObject]@{
+            FileName = $file.Name
+            Status   = "Removed"
+            OldSize  = $file.Length
+            NewSize  = "N/A"
+            OldDate  = $file.LastWriteTime
+            NewDate  = "N/A"
+        }
+    }
+}
+
+# Check for newly added files
+foreach ($file in $newFiles) {
+    if (-not $oldFileMap.ContainsKey($file.Name)) {
+        $results += [PSCustomObject]@{
+            FileName = $file.Name
+            Status   = "Added"
+            OldSize  = "N/A"
+            NewSize  = $file.Length
+            OldDate  = "N/A"
+            NewDate  = $file.LastWriteTime
+        }
+    }
+}
+
+# Export results to CSV
+$results | Export-Csv -Path $outputCsv -NoTypeInformation
+
+Write-Host "Comparison completed. Results saved to $outputCsv"
